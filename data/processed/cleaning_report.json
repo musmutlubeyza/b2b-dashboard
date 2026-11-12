@@ -17,27 +17,62 @@
     {
       "adim": "Birebir tekrar eden satırlar",
       "silinen_satir": 6213,
-      "gerekce": "Kalem numarası olmadığından ayırt edilemiyor; çift sayımı önlemek için silindi."
+      "gerekce": "Kalem numarası olmadığından ayırt edilemiyor; çift sayımı önlemek için silindi.",
+      "etki": {
+        "ciro": 162556.57999958,
+        "adet": 9929.0,
+        "fatura": 0,
+        "musteri": 0,
+        "urun": 0
+      }
     },
     {
       "adim": "Eksik veya sıfır adet",
-      "silinen_satir": 11,
-      "gerekce": "Satış miktarı tanımsız; ciroya katkısı yok veya düzeltme kaydı."
+      "kontrole_ayrilan": 11,
+      "gerekce": "Satış miktarı tanımsız; ciroya katkısı yok ya da düzeltme kaydı olabilir.",
+      "etki": {
+        "ciro": 0.0,
+        "adet": 0.0,
+        "fatura": 3,
+        "musteri": 1,
+        "urun": 1
+      }
     },
     {
       "adim": "Sıfır veya negatif net fiyat",
-      "silinen_satir": 5,
-      "gerekce": "Ücretsiz/düzeltme kayıtları; iskonto oranını bozuyor."
+      "kontrole_ayrilan": 5,
+      "gerekce": "Ücretsiz ya da düzeltme kaydı olabilir; iskonto oranını bozuyor.",
+      "etki": {
+        "ciro": 0.0,
+        "adet": 86.0,
+        "fatura": 0,
+        "musteri": 0,
+        "urun": 1
+      }
     },
     {
       "adim": "Liste fiyatı < 1 TL",
-      "silinen_satir": 5,
-      "gerekce": "Yer tutucu fiyatlar (ör. 0,0001 TL)."
+      "kontrole_ayrilan": 5,
+      "gerekce": "Yer tutucu fiyat olabilir (ör. 0,0001 TL).",
+      "etki": {
+        "ciro": 0.049998150000000005,
+        "adet": 335.0,
+        "fatura": 1,
+        "musteri": 0,
+        "urun": 0
+      }
     },
     {
       "adim": "İskonto > %90",
-      "silinen_satir": 67,
-      "gerekce": "Neredeyse bedelsiz sevkiyat (tek fatura); iskonto analizlerini çarpıtıyor."
+      "kontrole_ayrilan": 67,
+      "gerekce": "Neredeyse bedelsiz sevkiyat (tek fatura); iskonto analizlerini çarpıtır.",
+      "etki": {
+        "ciro": 0.28412452000000005,
+        "adet": 67.0,
+        "fatura": 1,
+        "musteri": 0,
+        "urun": 1
+      }
     },
     {
       "adim": "City eksik değer",
