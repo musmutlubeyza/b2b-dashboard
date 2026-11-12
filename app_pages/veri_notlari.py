@@ -152,7 +152,10 @@ with main:
         ], ["left", "left", "left"])
     with tabs[5]:
         section_header("Aksiyon kuralları")
-        st.caption("Paneldeki her öneri bu kurallardan biriyle üretilir; tahmine dayalı öneriler yalnızca seçilen model naive referansını geçerse gösterilir.")
+        st.caption("Paneldeki her öneri bu kurallardan biriyle üretilir. Model başarısına dayanan tahmin önerileri (ciro hedefi, "
+                   "kategori sinyali) yalnızca seçilen model naive referansını geçerse gösterilir; sevkiyat kapasitesi planı her "
+                   "durumda üretilir ve hangi yönteme dayandığını belirtir. Yönetici Özeti satış, pazarlama ve tedarikten birer "
+                   "öneri gösterir.")
         html_table(["Öneri", "Tetikleyici kural", "Departman", "Dayanak"], [
             ["<b>Yeniden temas</b>", "Önceki dönemde alıp seçili dönemde almayan (hareketsiz) müşteriler", "Satış", "Veri"],
             ["<b>Büyük müşteri teması</b>", "Önceki dönem cirosu en yüksek hareketsiz müşteri, 90 günden uzun süredir alım yoksa", "Satış", "Veri"],
@@ -161,7 +164,8 @@ with main:
             ["<b>Çapraz satış</b>", "Segmentte kategori alım oranı Çekirdek Kitabevleri'nin yarısından az (uykudaki müşteriler hariç)", "Pazarlama", "Veri"],
             ["<b>İskonto incelemesi</b>", "Ağırlıklı iskontosu %35–45 bandının dışında kalan müşteriler", "Pazarlama", "Veri"],
             ["<b>Yakın takip (AZ)</b>", "ABC-XYZ matrisinin AZ hücresi: ciroya katkısı yüksek, talebi düzensiz ürünler", "Tedarik", "Veri"],
-            ["<b>Kapasite</b>", "Bir günün adet payı salı–cuma ortalamasının 1,5 katını aşıyor; adet tahmini naive'i geçerse beklenen adet eklenir", "Tedarik", "Veri / Tahmin"],
+            ["<b>Kapasite</b>", "Bir günün adet payı salı–cuma ortalamasının 1,5 katını aşıyor", "Tedarik", "Veri"],
+            ["<b>Sevkiyat kapasitesi planı</b>", "8 haftalık adet tahmini ve son 13 haftanın gün dağılımı; model naive referansını geçemezse referans (naive) tahminle yapılır ve yöntem kartta yazılır", "Tedarik", "Tahmin"],
             ["<b>Sipariş planı / hedef</b>", "Toplam ciro tahmini ve %80 aralığı", "Tedarik, Yönetim", "Tahmin"],
             ["<b>Kategori sinyali</b>", "Tahmin aralığı son 8 hafta ortalamasının tamamen üstünde ya da altında (tedarikte adet, pazarlamada ciro)", "Tedarik, Pazarlama", "Tahmin"],
             ["<b>Model izleme</b>", "Gerçekleşen %80 aralığın dışına çıkarsa model yeniden kurulur", "Veri", "Tahmin"],

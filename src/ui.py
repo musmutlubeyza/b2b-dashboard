@@ -58,14 +58,14 @@ def kpi_card(i: int, label: str, value: str, change: float | None = None, comp: 
             _link(page, "Ayrıntı →", tab)
 
 
-def action_cards(actions: list[Action], note: str | None = None) -> None:
+def action_cards(actions: list[Action], note: str | None = None, limit: int = 3) -> None:
     head, rules = st.columns([3, 1], vertical_alignment="center")
     head.markdown('<div class="sec-head"><h3>Önerilen Aksiyonlar</h3></div>', unsafe_allow_html=True)
     with rules:
         _link(PAGE_NOTES, "Kurallar", "Aksiyon Kuralları")
     if not actions:
         st.caption("Seçili filtrelerde tetiklenen öneri yok.")
-    for i, a in enumerate(actions[:3]):
+    for i, a in enumerate(actions[:limit]):
         chips = f'<span class="chip dept-{a.dept}">{a.dept}</span>' + ('<span class="chip fc">Tahmine dayalı</span>' if a.forecast else "")
         with st.container(key=f"act_{i}"):
             st.markdown(f'<div class="chips">{chips}</div><div class="act-title">{a.title}</div>'

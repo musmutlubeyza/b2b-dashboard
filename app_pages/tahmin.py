@@ -77,8 +77,10 @@ with main:
         st.caption("%80 aralık: kayan doğrulama hatalarının karekök ortalaması (RMSE) × 1,28 × √(hafta sırası). "
                    + ("Seçilen model naive referansını geçtiği için tahmine dayalı öneriler gösteriliyor."
                       if r["beats_naive"] else
-                      "Hiçbir model kayan doğrulamada naive referansını geçemedi; tahmin naive yöntemle verilir ve "
-                      "tahmine dayalı öneriler gösterilmez. Yıl içindeki pandemi kırılması trend modellerini yanıltıyor."))
+                      "Hiçbir model kayan doğrulamada naive referansını geçemedi; tahmin naive yöntemle verilir. "
+                      "Model başarısına dayanan öneriler (ciro hedefi, kategori sinyali) gösterilmez; kapasite planı "
+                      "referans tahminle yapılır ve kartta yöntemi belirtilir. Yıl içindeki pandemi kırılması trend "
+                      "modellerini yanıltıyor."))
     with t3:
         section_header("Kategori tahminleri")
         st.caption("Kapsamdaki en büyük 5 kategori; her biri için ayrı model seçildi. Sinyal yalnızca model naive "

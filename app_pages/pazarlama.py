@@ -5,7 +5,7 @@ import streamlit as st
 
 from src import charts
 from src.actions import category_signals, cross_sell_campaign, discount_review
-from src.config import MARKETING_TABS, PRIMARY, SEGMENTS, rgba
+from src.config import MARKETING_TABS, PRIMARY, SEGMENT_SHORT, SEGMENTS, rgba
 from src.data_loader import load_category_forecasts, load_data
 from src.filters import apply_filters, comparison_label, period_name, previous_period
 from src.formatting import fmt_number, fmt_pct, fmt_tl
@@ -82,13 +82,14 @@ with main:
                     for name, fn in rows], ["left"] + ["right"] * 4)
 
     with t_cross:
-        a, b = st.columns(2, gap="large")
+        a, b = st.columns([1.3, 1], gap="large")
         with a:
             section_header("Kategori penetrasyonu", badge="Kategori filtresinden bağımsız")
             st.caption("Segmentteki müşterilerin yüzde kaçı bu kategoriden bu dönemde alım yaptı.")
             cells = lambda v: (f'<span class="heat" style="background: {rgba(PRIMARY, 0.05 + 0.4 * v)}">{fmt_pct(v, 0)}</span>'
                                if pd.notna(v) else "—")
-            html_table(["Kategori"] + [hl(s) for s in SEGMENTS],
+            short = lambda s: hl(s).replace(s, SEGMENT_SHORT[s])  # dar tabloda kısa segment adları
+            html_table(["Kategori"] + [short(s) for s in SEGMENTS],
                        [[cat] + [cells(rate.loc[s, cat]) for s in SEGMENTS] for cat in rate.columns],
                        ["left"] + ["center"] * 4)
         with b:

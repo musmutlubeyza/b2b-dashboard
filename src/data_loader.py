@@ -9,7 +9,27 @@ from src.config import DATA_PATH, REPORT_PATH, SEGMENTS
 from src.segments import segment_customers
 
 
+# Kod değiştiğinde (yerelde dosyalar kopyalandığında ya da Streamlit Cloud yeni sürümü çektiğinde) bu modül
+# yeniden yüklenir. Eski önbellekteki tablolar yeni kodla uyuşmayabilir (ör. segment adları değiştiğinde
+# tablolar boş görünür); bu yüzden modül her yüklendiğinde tüm önbellek temizlenir.
+st.cache_data.clear()
+st.cache_resource.clear()
+
+
+def _stamp() -> tuple:
+    """Önbellek anahtarı: veri dosyasının değişme zamanı ve segment adları.
+    data_prep yeniden çalıştırıldığında ya da segment adları değiştiğinde önbellek kendiliğinden yenilenir."""
+    return DATA_PATH.stat().st_mtime, tuple(SEGMENTS)
+
+
 @st.cache_resource(show_spinner="Veri yükleniyor...")
+def _load_data(stamp: tuple) -> tuple[pd.DataFrame, float]:
+    df = pd.read_parquet(DATA_PATH)
+    segments, silhouette = segment_customers(df)
+    df["Segment"] = pd.Categorical(df["CustomerID"].map(segments), categories=SEGMENTS)
+    return df, silhouette
+
+
 def load_data() -> tuple[pd.DataFrame, float]:
     """Temiz veriyi okur, müşteri segmentini ekler; tüm oturumlar aynı tabloyu paylaşır.
 
@@ -17,10 +37,7 @@ def load_data() -> tuple[pd.DataFrame, float]:
     tablonun kopyasını üretir. Karşılığında bu tablo hiçbir yerde yerinde
     değiştirilmez; filtreleme her zaman yeni bir tablo döndürür.
     """
-    df = pd.read_parquet(DATA_PATH)
-    segments, silhouette = segment_customers(df)
-    df["Segment"] = pd.Categorical(df["CustomerID"].map(segments), categories=SEGMENTS)
-    return df, silhouette
+    return _load_data(_stamp())
 
 
 @st.cache_data
@@ -29,11 +46,15 @@ def load_cleaning_report() -> dict:
 
 
 @st.cache_resource(show_spinner="Kayıp riski modeli hazırlanıyor...")
-def load_churn():
-    """Churn modelini bir kez eğitir; skorlar ve doğrulama sonuçları tüm oturumlarda paylaşılır."""
+def _load_churn(stamp: tuple):
     from src.churn import build
     df, _ = load_data()
     return build(df)
+
+
+def load_churn():
+    """Churn modelini bir kez eğitir; skorlar ve doğrulama sonuçları tüm oturumlarda paylaşılır."""
+    return _load_churn(_stamp())
 
 
 @st.cache_resource

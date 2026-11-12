@@ -4,13 +4,14 @@ import pandas as pd
 import streamlit as st
 
 from src import charts
-from src.actions import plan_with_forecast, summary_actions
+from src.actions import cross_sell_campaign, plan_with_forecast, summary_actions, volume_plan
 from src.chat import render_assistant
 from src.config import PAGE_FORECAST, PAGE_MARKETING, PAGE_SALES, PAGE_SUPPLY, PERIODS
 from src.data_loader import load_data, load_forecast
 from src.filters import apply_filters, comparison_label, period_name, previous_period
 from src.formatting import fmt_number, fmt_tl, tr_lower
-from src.metrics import category_movers, kpis, quarter_revenue, segment_shares, weekly_revenue
+from src.metrics import (category_movers, cross_sell, kpis, penetration, quarter_revenue, segment_shares,
+                         weekday_share, weekly_revenue)
 from src.ui import action_cards, kpi_card, panel_link, section_header, segment_period_note
 
 df, _ = load_data()
@@ -91,9 +92,20 @@ with main:
         panel_link(PAGE_SUPPLY, "Ürün ayrıntıları", "En Çok Satan Başlıklar")
 
 with side:
-    actions = summary_actions(cur, prev, f, prev_f) if prev is not None else []
-    if show_fc and fc_r["beats_naive"]:  # tahmine dayalı öneri yalnızca model naive referansını geçerse
-        actions.append(plan_with_forecast(fc_r))
-    action_cards(actions, note=None if prev is not None else "Karşılaştırmalı öneriler için önceki dönem gerekir.")
+    # Departmanlar arası denge: satış, pazarlama ve tedarikten birer öneri
+    sales = summary_actions(cur, prev, f, prev_f) if prev is not None else []
+    rate, missing = penetration(apply_filters(df, f, ignore=("segment", "category")))
+    supply = []
+    if show_fc:  # adet tahmini dönemden bağımsız; yalnızca dönem yıl sonunu içerdiğinde öneriye dönüşür
+        units = load_forecast(f.cities, f.categories, f.segments, "Quantity", 8, True, f.subcategories)
+        recent = apply_filters(df, f, ignore=("period",))
+        recent = recent[recent["InvoiceDate"] >= recent["InvoiceDate"].max() - pd.Timedelta(weeks=13)]
+        supply = [volume_plan(units, weekday_share(recent))]
+        if fc_r["beats_naive"]:  # ciro modeline dayalı plan yalnızca model naive referansını geçerse
+            supply.append(plan_with_forecast(fc_r))
+    # Ekrana sığması için üç kart: her departmandan en öncelikli öneri; eksik departman varsa sıradaki öneri
+    ordered = sales[:1] + [cross_sell_campaign(cross_sell(rate, missing))] + supply[:1] + sales[1:] + supply[1:]
+    action_cards([a for a in ordered if a is not None], limit=3,
+                 note=None if prev is not None else "Karşılaştırmalı satış önerileri için önceki dönem gerekir.")
 
 render_assistant(f)

@@ -110,22 +110,35 @@ def close_monitoring(cells: pd.DataFrame) -> Action | None:
                   PAGE_SUPPLY, "ABC-XYZ", tab="ABC-XYZ Önceliklendirme")
 
 
-def capacity(shares: pd.Series, units: dict | None = None, factor: float = 1.5) -> Action | None:
-    """Kural: bir günün adet payı, salı–cuma ortalamasının 1,5 katını aşıyor.
-    Adet tahmini naive referansını geçiyorsa beklenen günlük adet de eklenir (tahmine dayalı)."""
+def capacity(shares: pd.Series, factor: float = 1.5) -> Action | None:
+    """Kural: bir günün adet payı, salı–cuma ortalamasının 1,5 katını aşıyor."""
     base = shares.iloc[1:5].mean()
     day = int(shares.idxmax())
     if not base or shares[day] <= factor * base:
         return None
-    evidence = (f"Satılan adetin {fmt_pct(shares[day])} kadarı {tr_lower(WEEKDAYS_TR[day])} günü; "
-                f"diğer iş günleri ortalaması {fmt_pct(base)}.")
-    with_fc = bool(units and units.get("enough_data") and units.get("beats_naive"))
-    if with_fc:
-        weekly = units["forecast"]["point"].mean()
-        evidence += (f" {horizon_label(units['forecast'])} döneminde haftada ortalama {fmt_number(weekly)} adet "
-                     f"bekleniyor; {tr_lower(WEEKDAYS_TR[day])} başına yaklaşık {fmt_number(weekly * shares[day])} adet.")
-    return Action("Tedarik", f"{WEEKDAYS_TR[day]} depo kapasitesini artır", evidence, PAGE_SUPPLY, "İş yükü",
-                  forecast=with_fc, tab="İş Yükü")
+    return Action("Tedarik", f"{WEEKDAYS_TR[day]} depo kapasitesini artır",
+                  f"Satılan adetin {fmt_pct(shares[day])} kadarı {tr_lower(WEEKDAYS_TR[day])} günü; "
+                  f"diğer iş günleri ortalaması {fmt_pct(base)}.", PAGE_SUPPLY, "İş yükü", tab="İş Yükü")
+
+
+def volume_plan(units: dict, shares: pd.Series) -> Action | None:
+    """Kural (tahmine dayalı): 8 haftalık adet tahmini ve son 13 haftanın gün dağılımıyla sevkiyat kapasitesi planı.
+    Seçilen model naive referansını geçemezse plan referans tahminle (son haftaların seviyesi) yapılır ve
+    bu, kanıt satırında açıkça yazılır. Ufuk ve aralık kartta verilir."""
+    if not units or not units.get("enough_data") or shares.empty:
+        return None
+    fc = units["forecast"]
+    weekly = fc["point"].mean()
+    day = int(shares.idxmax())
+    method = (f"Yöntem: {tr_lower(units['best'])}" if units.get("beats_naive")
+              else "Yöntem: naive (modeller referansı geçemedi)")
+    day_month = lambda d: fmt_date(d).rsplit(" ", 1)[0]  # "4 Ocak"
+    span = f"{day_month(fc.index[0])} – {day_month(fc.index[-1] + pd.Timedelta(days=6))}"
+    return Action("Tedarik", f"{span} sevkiyat kapasitesini haftada {fmt_number(weekly)} adete göre planla",
+                  f"8 haftada {fmt_number(units['total'])} adet (%80: {fmt_number(units['total_lo'])} – "
+                  f"{fmt_number(units['total_hi'])}); {tr_lower(WEEKDAYS_TR[day])} başına ~{fmt_number(weekly * shares[day])} adet. "
+                  f"{method}.",
+                  PAGE_SUPPLY, "Adet tahmini", forecast=True, tab="Adet Tahmini")
 
 
 # --- Tahmine dayalı kurallar (yalnızca seçilen model naive referansını geçerse) ---

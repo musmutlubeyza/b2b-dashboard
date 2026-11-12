@@ -1,6 +1,7 @@
 """Sayı, para ve tarih biçimlendirme (Türkçe: binlik ayıracı nokta, ondalık virgül)."""
 
 import datetime as dt
+import re
 
 from src.config import MONTHS_TR
 
@@ -62,7 +63,18 @@ def tr_capitalize_word(word: str) -> str:
 
 
 def tr_title(text: str) -> str:
-    """Başlık düzeni: her kelime büyük harfle başlar; bağlaçlar (ve, ile, veya, de/da, ki, mi) küçük kalır."""
-    words = str(text).split(" ")
-    return " ".join(w if (i > 0 and tr_lower(w) in _TITLE_KEEP_LOWER) else tr_capitalize_word(w)
-                    for i, w in enumerate(words))
+    """Başlık düzeni: her kelime büyük harfle başlar; bağlaçlar (ve, ile, veya, de/da, ki, mi) küçük kalır.
+    Metindeki HTML etiketlerine (<b>, <span ...>) dokunulmaz."""
+    parts = re.split(r"(<[^>]+>)", str(text))
+    first = True
+    for i, part in enumerate(parts):
+        if part.startswith("<") or not part.strip():
+            continue
+        words = part.split(" ")
+        for j, w in enumerate(words):
+            if not w:
+                continue
+            words[j] = w if (not first and tr_lower(w) in _TITLE_KEEP_LOWER) else tr_capitalize_word(w)
+            first = False
+        parts[i] = " ".join(words)
+    return "".join(parts)

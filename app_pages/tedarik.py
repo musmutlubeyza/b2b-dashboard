@@ -1,10 +1,11 @@
 """Ürün ve Tedarik: ABC-XYZ talep ve ciro önceliklendirmesi, adet tahmini, haftalık iş yükü ve en çok satan başlıklar."""
 
+import pandas as pd
 import streamlit as st
 
 from src import charts
-from src.actions import capacity, category_signals, close_monitoring, horizon_label
-from src.config import PRIMARY, SUPPLY_TABS, WEEKDAYS_TR, WEEKDAYS_TR_SHORT, rgba
+from src.actions import capacity, category_signals, close_monitoring, horizon_label, volume_plan
+from src.config import PAGE_SUPPLY, PRIMARY, SUPPLY_TABS, WEEKDAYS_TR, WEEKDAYS_TR_SHORT, rgba
 from src.data_loader import load_category_forecasts, load_data, load_forecast
 from src.filters import apply_filters, comparison_label, period_name, previous_period
 from src.formatting import fmt_number, fmt_pct, tr_lower
@@ -57,8 +58,8 @@ n_qty = int(cur["Quantity"].sum())
 with c[0]:
     if units["enough_data"]:
         kpi_card(0, "Önümüzdeki 8 hafta (adet)", fmt_number(units["total"]),
-                 note=f"{horizon_label(units['forecast'])}; yöntem: {tr_lower(units['best'])}", page="app_pages/tahmin.py",
-                 tab="Haftalık Tahmin")
+                 note=f"{horizon_label(units['forecast'])}; yöntem: {tr_lower(units['best'])}", page=PAGE_SUPPLY,
+                 tab="Adet Tahmini")
     else:
         kpi_card(0, "Önümüzdeki 8 hafta (adet)", "—", note="Seçili filtrelerde yeterli veri yok")
 with c[1]:
@@ -73,7 +74,7 @@ with c[3]:
 
 main, side = st.columns([3.4, 1], gap="large")
 with main:
-    t_abc, t_load, t_top = page_tabs(SUPPLY_TABS, "tabs_supply")
+    t_abc, t_units, t_load, t_top = page_tabs(SUPPLY_TABS, "tabs_supply")
 
     with t_abc:
         section_header("ABC-XYZ talep ve ciro önceliklendirmesi", badge="Yalnızca kategori filtresine bağlı")
@@ -95,6 +96,34 @@ with main:
                 html.append(f'<div class="cell" style="background: {rgba(PRIMARY, alpha)}"><div class="n">{fmt_number(n)} SKU</div>'
                             f'<div class="s">Ciro payı {fmt_pct(rev / total)}</div><div class="p">{PRIORITY[a + x]}</div></div>')
         st.markdown("".join(html) + "</div>", unsafe_allow_html=True)
+
+    with t_units:
+        if not units["enough_data"]:
+            st.info(f"Seçili filtrelerde seride yalnızca {units['active_weeks']} haftada satış var; adet tahmini için "
+                    "en az 40 hafta gerekir.")
+        else:
+            a, b = st.columns([3, 1.3], gap="large")
+            with a:
+                section_header("Haftalık satılan adet ve tahmin", badge="Dönem filtresinden bağımsız")
+                st.plotly_chart(charts.forecast_chart(units, "adet"), config=charts.CONFIG, theme=None)
+                ut = units["table"]
+                st.caption(f"Yöntem: {tr_lower(units['best'])}; kayan doğrulama hatası (MAPE) "
+                           f"{fmt_pct(ut.loc[units['best'], 'mape'])}, son test {fmt_pct(units['test'][units['best']])}. "
+                           + ("Kapasite planı önerisi bu modelin tahminine dayanır." if units["beats_naive"] else
+                              "Hiçbir model naive referansını geçemediği için tahmin naive yöntemle (son haftaların "
+                              "seviyesi) verilir. Kapasite planı bu referans tahminle yapılır; kategori sinyali gibi "
+                              "model başarısına dayanan öneriler üretilmez."))
+            with b:
+                section_header("Beklenen günlük adet")
+                recent = apply_filters(df, f, ignore=("period",))
+                recent = recent[recent["InvoiceDate"] >= recent["InvoiceDate"].max() - pd.Timedelta(weeks=13)]
+                ws = weekday_share(recent)
+                weekly = units["forecast"]["point"].mean()
+                st.caption(f"{horizon_label(units['forecast'])}; haftada ortalama {fmt_number(weekly)} adet, son 13 "
+                           "haftanın gün dağılımına göre.")
+                html_table(["Gün", "Pay", "Beklenen adet"],
+                           [[WEEKDAYS_TR[d], fmt_pct(ws.get(d, 0)), f"<b>{fmt_number(weekly * ws.get(d, 0))}</b>"]
+                            for d in range(7) if ws.get(d, 0) >= 0.005], ["left", "right", "right"])
 
     with t_load:
         a, b = st.columns([3, 2], gap="large")
@@ -124,6 +153,9 @@ with side:
     # Sipariş kararı adetle verildiği için tedarik sinyalleri adet serisinden üretilir
     signals = category_signals(load_category_forecasts(f.cities, f.categories, f.segments, "Quantity",
                                                        subcategories=f.subcategories), "Tedarik")
-    action_cards([a for a in [*signals[:1], close_monitoring(sku), capacity(shares, units)] if a is not None],
+    recent13 = apply_filters(df, f, ignore=("period",))
+    recent13 = recent13[recent13["InvoiceDate"] >= recent13["InvoiceDate"].max() - pd.Timedelta(weeks=13)]
+    plan = volume_plan(units, weekday_share(recent13))
+    action_cards([a for a in [plan, *signals[:1], close_monitoring(sku), capacity(shares)] if a is not None], limit=4,
                  note=None if signals else "Tahmine dayalı sipariş sinyali yok: adet tahminleri naive referansını "
                                            "geçemedi ya da son 8 haftadan belirgin ayrışmıyor.")
