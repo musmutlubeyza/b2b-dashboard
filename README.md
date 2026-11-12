@@ -10,6 +10,12 @@ KPI'lar, analizler, tahminler ve kural tabanlı aksiyon önerileri sunar.
 
 **Canlı panel:** [bookwise-intelligence-platform.streamlit.app](https://bookwise-intelligence-platform.streamlit.app/)
 
+**Kaynak kod:** [github.com/musmutlubeyza/b2b-dashboard](https://github.com/musmutlubeyza/b2b-dashboard)
+
+## Ekip Üyeleri
+
+1. Beyza Mutlu - 507251076
+2. Seher Köseoğlu - 507251059
 
 ## Sayfalar
 
