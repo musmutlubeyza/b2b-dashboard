@@ -22,7 +22,7 @@ HORIZON_DAYS = 92
 def features(df: pd.DataFrame, cutoff: pd.Timestamp) -> pd.DataFrame:
     """Kesim tarihine kadarki davranıştan müşteri başına özellikler (geleceği görmez)."""
     obs = df[df["InvoiceDate"] <= cutoff]
-    g = obs.groupby("CustomerID")
+    g = obs.groupby("CustomerID", observed=True)
     X = pd.DataFrame({
         "recency": (cutoff - g["InvoiceDate"].max()).dt.days,
         "tenure": (cutoff - g["InvoiceDate"].min()).dt.days,
@@ -31,9 +31,9 @@ def features(df: pd.DataFrame, cutoff: pd.Timestamp) -> pd.DataFrame:
         "discount": 1 - g["Revenue"].sum() / g["ListValue"].sum(),
         "categories": g["Category_Standardized"].nunique(),
     })
-    last90 = obs[obs["InvoiceDate"] > cutoff - pd.Timedelta(days=90)].groupby("CustomerID")["InvoiceNo"].nunique()
+    last90 = obs[obs["InvoiceDate"] > cutoff - pd.Timedelta(days=90)].groupby("CustomerID", observed=True)["InvoiceNo"].nunique()
     X["invoices_last90"] = last90.reindex(X.index).fillna(0)
-    days = obs.drop_duplicates("InvoiceNo").sort_values("InvoiceDate").groupby("CustomerID")["InvoiceDate"]
+    days = obs.drop_duplicates("InvoiceNo").sort_values("InvoiceDate").groupby("CustomerID", observed=True)["InvoiceDate"]
     X["mean_gap"] = days.apply(lambda s: s.diff().dt.days.mean()).reindex(X.index).fillna(X["tenure"])
     X["recency_vs_gap"] = X["recency"] / X["mean_gap"].replace(0, 1)
     return X
@@ -65,7 +65,7 @@ def build(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     model.fit(X2, y2)                      # son etiketli kesimle yeniden eğit
     X_end = features(df, end)
     scores = pd.DataFrame({"probability": model.predict_proba(X_end)[:, 1]}, index=X_end.index)
-    g = df.groupby("CustomerID")
+    g = df.groupby("CustomerID", observed=True)
     scores["revenue"] = g["Revenue"].sum()
     scores["last_purchase"] = g["InvoiceDate"].max()
     scores["city"] = g["City"].first()

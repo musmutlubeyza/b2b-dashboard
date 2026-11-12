@@ -101,8 +101,8 @@ with main:
                 html_table(["Segment", "Kategori", "Almayan", "Segmentte", "Çekirdekte"],
                            [[r.segment, r.category, f"<b>{fmt_number(r.missing)}</b>", fmt_pct(r.rate, 0), fmt_pct(r.core_rate, 0)]
                             for r in targets.itertuples()], ["left", "left", "right", "right", "right"])
-                seg_of = no_cat.groupby("CustomerID")["Segment"].first()
-                bought = set(no_cat.loc[no_cat["Category_Standardized"] == targets.iloc[0]["category"], "CustomerID"])
+                seg_of = no_cat.groupby("CustomerID", observed=True)["Segment"].first()
+                bought = set(no_cat.loc[no_cat["Category_Standardized"] == targets.iloc[0]["category"], "CustomerID"].unique())
                 lst = seg_of[(seg_of == targets.iloc[0]["segment"]) & ~seg_of.index.isin(bought)].index
                 st.download_button("Hedef listesini indir (CSV)",
                                    pd.Series(lst, name="CustomerID").to_csv(index=False).encode("utf-8-sig"),

@@ -8,7 +8,7 @@ B2B kitap dağıtımı için karar destek paneli.
 hazırlanan Streamlit gösterge paneli. Panel; satış, pazarlama ve tedarik zinciri departmanları için
 KPI'lar, analizler, tahminler ve kural tabanlı aksiyon önerileri sunar.
 
-**Canlı panel:** https://bookwise-intelligence-platform.streamlit.app/
+**Canlı panel:** [buraya Streamlit bağlantısı eklenecek]
 
 ## Sayfalar
 

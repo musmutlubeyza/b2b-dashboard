@@ -17,7 +17,7 @@ RANDOM_STATE = 42
 def customer_features(df: pd.DataFrame) -> pd.DataFrame:
     """Müşteri başına kümeleme değişkenleri."""
     end = df["InvoiceDate"].max()
-    g = df.groupby("CustomerID")
+    g = df.groupby("CustomerID", observed=True)
     f = pd.DataFrame({
         "invoices": g["InvoiceNo"].nunique(),
         "revenue": g["Revenue"].sum(),

@@ -19,12 +19,16 @@ def _link(page: str, label: str, tab: str | None = None) -> None:
 
 
 def page_tabs(names: list[str], key: str):
-    """Sekmeler; adres parametresinde geçerli bir sekme adı varsa o sekme seçili açılır."""
+    """Sekmeler; adres parametresinde geçerli bir sekme adı varsa o sekme seçili açılır.
+
+    Sekme değiştirmek sunucuya gitmez, tarayıcıda anında olur (sayfa yeniden hesaplanmaz).
+    Bağlantıyla gelinen sekme 'default' olarak saklanır; aynı değer korunduğu sürece kullanıcının
+    sonradan elle seçtiği sekme filtre değişikliklerinde de yerinde kalır."""
     target = st.query_params.get(TAB_PARAM)
     if target in names:
-        st.session_state[key] = target
-        del st.query_params[TAB_PARAM]  # sonraki sekme seçimlerini ezmesin
-    return st.tabs(names, key=key, on_change="rerun")
+        st.session_state[f"{key}_default"] = target
+        del st.query_params[TAB_PARAM]
+    return st.tabs(names, default=st.session_state.get(f"{key}_default"))
 
 
 def section_header(title: str, badge: str | list[str] | None = None) -> None:

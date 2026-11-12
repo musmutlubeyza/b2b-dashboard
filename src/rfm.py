@@ -33,7 +33,7 @@ def _segment(r: int, fm: int) -> str:
 
 def rfm_table(df: pd.DataFrame, end: pd.Timestamp) -> pd.DataFrame:
     """Müşteri başına R, F, M puanları ve RFM segmenti."""
-    g = df.groupby("CustomerID")
+    g = df.groupby("CustomerID", observed=True)
     t = pd.DataFrame({"recency": (end - g["InvoiceDate"].max()).dt.days,
                       "frequency": g["InvoiceNo"].nunique(), "monetary": g["Revenue"].sum()})
     if len(t) < 5:

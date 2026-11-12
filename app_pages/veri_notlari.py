@@ -104,7 +104,7 @@ with main:
         st.download_button("Denetim tablosunu indir (CSV)", audit.to_csv(index=False, sep=";").encode("utf-8-sig"),
                            "kategori_esleme.csv", "text/csv")
     with tabs[3]:
-        q1 = set(df.loc[df["InvoiceDate"].dt.quarter == 1, "CustomerID"])
+        q1 = set(df.loc[df["InvoiceDate"].dt.quarter == 1, "CustomerID"].unique())
         dormant = df.loc[df["Segment"] == SEGMENTS[3], "CustomerID"].unique()
         a, b = st.columns(2, gap="large")
         with a:

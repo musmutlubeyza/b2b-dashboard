@@ -48,17 +48,17 @@ def category_movers(cur: pd.DataFrame, prev: pd.DataFrame, n: int = 3) -> pd.Dat
 
 def inactive_customers(cur: pd.DataFrame, prev: pd.DataFrame) -> pd.DataFrame:
     """Önceki dönemde alım yapıp bu dönemde yapmayan müşteriler ve önceki dönem cirosu."""
-    gone = set(prev["CustomerID"]) - set(cur["CustomerID"])
-    p = prev[prev["CustomerID"].isin(gone)]
-    return (p.groupby("CustomerID").agg(revenue=("Revenue", "sum"), city=("City", "first"))
+    gone = set(prev["CustomerID"].unique()) - set(cur["CustomerID"].unique())  # unique: satır yerine müşteri sayısı kadar
+    p = prev[prev["CustomerID"].isin(list(gone))]
+    return (p.groupby("CustomerID", observed=True).agg(revenue=("Revenue", "sum"), city=("City", "first"))
             .sort_values("revenue", ascending=False))
 
 
 def customer_flow(scope: pd.DataFrame, cur: pd.DataFrame, prev: pd.DataFrame, start) -> dict:
     """Önceki dönemden seçili döneme müşteri hareketi.
     scope: dönem dışındaki filtreler uygulanmış tüm veri (müşterinin daha önce alım yapıp yapmadığı için)."""
-    c, p = set(cur["CustomerID"]), set(prev["CustomerID"])
-    before = set(scope.loc[scope["InvoiceDate"] < pd.Timestamp(start), "CustomerID"])
+    c, p = set(cur["CustomerID"].unique()), set(prev["CustomerID"].unique())
+    before = set(scope.loc[scope["InvoiceDate"] < pd.Timestamp(start), "CustomerID"].unique())
     return {"prev": len(p), "inactive": len(p - c), "stay": len(p & c),
             "back": len((c - p) & before), "new": len(c - before), "cur": len(c)}
 
@@ -79,10 +79,10 @@ def city_table(cur: pd.DataFrame, prev: pd.DataFrame | None, n: int = 8) -> pd.D
 def segment_profiles(cur: pd.DataFrame, end) -> pd.DataFrame:
     """Seçili dönemde her segmentin ortanca davranışı (sütunlar segment)."""
     kids = cur["Main_Category"].eq("Çocuk ve Gençlik")
-    c = cur.groupby("CustomerID").agg(segment=("Segment", "first"), revenue=("Revenue", "sum"),
+    c = cur.groupby("CustomerID", observed=True).agg(segment=("Segment", "first"), revenue=("Revenue", "sum"),
                                       list_value=("ListValue", "sum"), invoices=("InvoiceNo", "nunique"),
                                       categories=("Category_Standardized", "nunique"), last=("InvoiceDate", "max"))
-    c["kids"] = cur[kids].groupby("CustomerID")["Revenue"].sum().reindex(c.index).fillna(0) / c["revenue"]
+    c["kids"] = cur[kids].groupby("CustomerID", observed=True)["Revenue"].sum().reindex(c.index).fillna(0) / c["revenue"]
     c["basket"] = c["revenue"] / c["invoices"]
     c["discount"] = 1 - c["revenue"] / c["list_value"]
     c["recency"] = (pd.Timestamp(end) - c["last"]).dt.days
@@ -97,7 +97,7 @@ def segment_profiles(cur: pd.DataFrame, end) -> pd.DataFrame:
 def penetration(cur: pd.DataFrame, n: int = 6) -> tuple[pd.DataFrame, pd.DataFrame]:
     """En büyük n kategori için segment başına alım oranı ve kategoriyi almayan müşteri sayısı."""
     top = cur.groupby("Category_Standardized", observed=True)["Revenue"].sum().nlargest(n).index
-    seg = cur.groupby("CustomerID")["Segment"].first()
+    seg = cur.groupby("CustomerID", observed=True)["Segment"].first()
     bought = (cur[cur["Category_Standardized"].isin(top)].groupby(["CustomerID", "Category_Standardized"], observed=True).size()
               .unstack(fill_value=0).reindex(index=seg.index, columns=top, fill_value=0) > 0)
     rate = bought.groupby(seg, observed=False).mean().reindex(SEGMENTS)
@@ -120,7 +120,7 @@ def cross_sell(rate: pd.DataFrame, missing: pd.DataFrame, core: str = SEGMENTS[0
 
 
 def customer_discounts(cur: pd.DataFrame) -> pd.DataFrame:
-    c = cur.groupby("CustomerID").agg(revenue=("Revenue", "sum"), list_value=("ListValue", "sum"))
+    c = cur.groupby("CustomerID", observed=True).agg(revenue=("Revenue", "sum"), list_value=("ListValue", "sum"))
     c["discount"] = 1 - c["revenue"] / c["list_value"]
     return c
 
