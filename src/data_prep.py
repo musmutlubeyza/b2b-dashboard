@@ -28,6 +28,7 @@ PROCESSED_DIR = ROOT / "data" / "processed"
 PARQUET_PATH = PROCESSED_DIR / "transactions.parquet"
 REPORT_PATH = PROCESSED_DIR / "cleaning_report.json"
 CATEGORY_AUDIT_PATH = PROCESSED_DIR / "category_mapping.csv"
+REVIEW_PATH = PROCESSED_DIR / "review_records.csv"   # hesaplamalardan ayrılan, kaynak sistemde kontrol edilecek kayıtlar
 
 # --- Kurallar --------------------------------------------------------------
 UNKNOWN_LABEL = "Belirtilmemiş"
@@ -61,17 +62,38 @@ def load_raw(path: Path = RAW_PATH) -> pd.DataFrame:
     return pd.read_excel(path, sheet_name="Transaction")
 
 
-def clean(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, pd.DataFrame]:
-    """Veriyi temizler; temiz tabloyu ve adım adım raporu döndürür."""
+def clean(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, pd.DataFrame, pd.DataFrame]:
+    """Veriyi temizler; temiz tabloyu, adım adım raporu, kategori denetim tablosunu ve kontrol listesini döndürür.
+
+    Yalnızca birebir tekrar eden satırlar silinir. Diğer şüpheli kayıtlar silinmez: hesaplamalardan
+    ayrılır ve gerekçeleriyle kontrol listesine (review_records.csv) yazılır. Her adımın ciro, adet,
+    fatura, müşteri ve ürün üzerindeki etkisi raporlanır (hassasiyet analizi).
+    """
     df = raw.copy()
     steps: list[dict] = []
+    review_parts: list[pd.DataFrame] = []
+
+    def impact(part: pd.DataFrame, rest: pd.DataFrame) -> dict:
+        """Ayrılan satırların etkisi; 'tamamen' = kalan veride hiç kaydı kalmayan fatura/müşteri/ürün."""
+        gone = lambda col: len(set(part[col].dropna()) - set(rest[col].dropna()))
+        return {"ciro": float((part["Quantity"].fillna(0) * part["NetPrice"]).sum()),
+                "adet": float(part["Quantity"].fillna(0).sum()),
+                "fatura": gone("InvoiceNo"), "musteri": gone("CustomerID"), "urun": gone("StockCode")}
 
     def drop_rows(mask: pd.Series, step: str, reason: str) -> None:
-        """Maskeye uyan satırları siler ve raporlar."""
+        """Maskeye uyan satırları siler (yalnızca birebir tekrarlar için) ve etkisini raporlar."""
         nonlocal df
-        removed = int(mask.sum())
-        df = df.loc[~mask].copy()
-        steps.append({"adim": step, "silinen_satir": removed, "gerekce": reason})
+        part, rest = df.loc[mask], df.loc[~mask]
+        steps.append({"adim": step, "silinen_satir": int(mask.sum()), "gerekce": reason, "etki": impact(part, rest)})
+        df = rest.copy()
+
+    def set_aside(mask: pd.Series, step: str, reason: str) -> None:
+        """Maskeye uyan satırları hesaplamalardan ayırır ve kontrol listesine ekler (silmez)."""
+        nonlocal df
+        part, rest = df.loc[mask], df.loc[~mask]
+        steps.append({"adim": step, "kontrole_ayrilan": int(mask.sum()), "gerekce": reason, "etki": impact(part, rest)})
+        review_parts.append(part.assign(Kontrol_Gerekcesi=step))
+        df = rest.copy()
 
     def log_fix(step: str, affected: int, note: str) -> None:
         """Satır silmeyen düzeltmeleri raporlar."""
@@ -96,18 +118,18 @@ def clean(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, pd.DataFrame]:
     drop_rows(df.duplicated(keep="first"), "Birebir tekrar eden satırlar",
               "Kalem numarası olmadığından ayırt edilemiyor; çift sayımı önlemek için silindi.")
 
-    # 3) Geçersiz adet
-    drop_rows(df["Quantity"].isna() | (df["Quantity"] <= 0), "Eksik veya sıfır adet",
-              "Satış miktarı tanımsız; ciroya katkısı yok veya düzeltme kaydı.")
+    # 3) Geçersiz adet: kontrol listesine
+    set_aside(df["Quantity"].isna() | (df["Quantity"] <= 0), "Eksik veya sıfır adet",
+              "Satış miktarı tanımsız; ciroya katkısı yok ya da düzeltme kaydı olabilir.")
 
-    # 4) Geçersiz fiyatlar
-    drop_rows(df["NetPrice"] <= 0, "Sıfır veya negatif net fiyat",
-              "Ücretsiz/düzeltme kayıtları; iskonto oranını bozuyor.")
-    drop_rows(df["UnitPrice"] < MIN_LIST_PRICE, f"Liste fiyatı < {MIN_LIST_PRICE:.0f} TL",
-              "Yer tutucu fiyatlar (ör. 0,0001 TL).")
-    drop_rows(df["NetPrice"] / df["UnitPrice"] < 1 - MAX_DISCOUNT,
+    # 4) Şüpheli fiyatlar: kontrol listesine
+    set_aside(df["NetPrice"] <= 0, "Sıfır veya negatif net fiyat",
+              "Ücretsiz ya da düzeltme kaydı olabilir; iskonto oranını bozuyor.")
+    set_aside(df["UnitPrice"] < MIN_LIST_PRICE, f"Liste fiyatı < {MIN_LIST_PRICE:.0f} TL",
+              "Yer tutucu fiyat olabilir (ör. 0,0001 TL).")
+    set_aside(df["NetPrice"] / df["UnitPrice"] < 1 - MAX_DISCOUNT,
               f"İskonto > %{MAX_DISCOUNT * 100:.0f}",
-              "Neredeyse bedelsiz sevkiyat (tek fatura); iskonto analizlerini çarpıtıyor.")
+              "Neredeyse bedelsiz sevkiyat (tek fatura); iskonto analizlerini çarpıtır.")
 
     # 5) Eksik il: silmek yerine etiketle (eksik kategori 6. adımda sınıflandırılır)
     missing = df["City"].isna()
@@ -164,23 +186,26 @@ def clean(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, pd.DataFrame]:
         "adimlar": steps,
         "kategori": category_report,
     }
-    return df, report, category_audit
+    review = pd.concat(review_parts, ignore_index=True) if review_parts else pd.DataFrame()
+    return df, report, category_audit, review
 
 
 def main() -> None:
     print("Ham veri okunuyor...")
     raw = load_raw()
-    df, report, category_audit = clean(raw)
+    df, report, category_audit, review = clean(raw)
 
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     df.to_parquet(PARQUET_PATH, index=False)
     REPORT_PATH.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     category_audit.to_csv(CATEGORY_AUDIT_PATH, index=False, encoding="utf-8-sig")
+    review.to_csv(REVIEW_PATH, index=False, encoding="utf-8-sig")
 
+    kinds = {"silinen_satir": "silindi", "kontrole_ayrilan": "kontrol listesine ayrıldı", "duzeltilen_satir": "düzeltildi"}
     for s in report["adimlar"]:
-        n = s.get("silinen_satir", s.get("duzeltilen_satir"))
-        kind = "silindi" if "silinen_satir" in s else "düzeltildi"
-        print(f"- {s['adim']}: {n:,} satır {kind}")
+        key = next(k for k in kinds if k in s)
+        print(f"- {s['adim']}: {s[key]:,} satır {kinds[key]}")
+    print(f"Kontrol listesi: {len(review):,} kayıt ({REVIEW_PATH.relative_to(ROOT)})")
     print(f"Satır: {report['ham_satir']:,} -> {report['temiz_satir']:,}")
     print(f"Ciro:  {report['ham_ciro']:,.0f} -> {report['temiz_ciro']:,.0f} TL")
     print(f"Kaydedildi: {PARQUET_PATH.relative_to(ROOT)}")

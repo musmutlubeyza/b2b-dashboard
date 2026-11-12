@@ -46,10 +46,10 @@ def category_movers(cur: pd.DataFrame, prev: pd.DataFrame, n: int = 3) -> pd.Dat
     return pd.concat([up, down])
 
 
-def lost_customers(cur: pd.DataFrame, prev: pd.DataFrame) -> pd.DataFrame:
+def inactive_customers(cur: pd.DataFrame, prev: pd.DataFrame) -> pd.DataFrame:
     """Önceki dönemde alım yapıp bu dönemde yapmayan müşteriler ve önceki dönem cirosu."""
-    lost = set(prev["CustomerID"]) - set(cur["CustomerID"])
-    p = prev[prev["CustomerID"].isin(lost)]
+    gone = set(prev["CustomerID"]) - set(cur["CustomerID"])
+    p = prev[prev["CustomerID"].isin(gone)]
     return (p.groupby("CustomerID").agg(revenue=("Revenue", "sum"), city=("City", "first"))
             .sort_values("revenue", ascending=False))
 
@@ -59,7 +59,7 @@ def customer_flow(scope: pd.DataFrame, cur: pd.DataFrame, prev: pd.DataFrame, st
     scope: dönem dışındaki filtreler uygulanmış tüm veri (müşterinin daha önce alım yapıp yapmadığı için)."""
     c, p = set(cur["CustomerID"]), set(prev["CustomerID"])
     before = set(scope.loc[scope["InvoiceDate"] < pd.Timestamp(start), "CustomerID"])
-    return {"prev": len(p), "lost": len(p - c), "stay": len(p & c),
+    return {"prev": len(p), "inactive": len(p - c), "stay": len(p & c),
             "back": len((c - p) & before), "new": len(c - before), "cur": len(c)}
 
 

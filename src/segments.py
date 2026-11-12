@@ -49,11 +49,11 @@ def segment_customers(df: pd.DataFrame) -> tuple[pd.Series, float]:
     prof = f.assign(cl=labels).groupby("cl").agg(
         revenue=("revenue", "sum"), recency=("recency", "median"), basket=("basket", "median"))
     names = {}
-    core = prof["revenue"].idxmax(); names[core] = "Çekirdek kitabevleri"
+    core = prof["revenue"].idxmax(); names[core] = "Çekirdek Kitabevleri"
     rest = prof.drop(core)
-    dormant = rest["recency"].idxmax(); names[dormant] = "Uykudaki müşteriler"
+    dormant = rest["recency"].idxmax(); names[dormant] = "Uykudaki Müşteriler"
     rest = rest.drop(dormant)
-    bulk = rest["basket"].idxmax(); names[bulk] = "Toplu alıcılar"
-    names[rest.drop(bulk).index[0]] = "Düzenli küçük alıcılar"
+    bulk = rest["basket"].idxmax(); names[bulk] = "Toplu Alıcılar"
+    names[rest.drop(bulk).index[0]] = "Düzenli Küçük Alıcılar"
 
     return pd.Series(labels, index=f.index).map(names).rename("Segment"), score

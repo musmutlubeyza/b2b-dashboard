@@ -108,7 +108,7 @@ def _filter_fragment(cities: list, tree: dict, lo: dt.date, hi: dt.date, disable
         for n in FIELDS:  # widget'ları kalıcı değerlerle başlat
             st.session_state[_w(n)] = st.session_state[_v(n)]
         with st.container(key="filter_bar"):
-            cols = st.columns([0.95, 1.4, 0.85, 1.1, 1.2, 1.05, 0.62, 0.22], vertical_alignment="center")
+            cols = st.columns([0.95, 1.3, 0.85, 1.05, 1.1, 1.3, 0.62, 0.22], vertical_alignment="center")
             hidden = "collapsed"  # alanların içindeki değer ve yer tutucular ne işe yaradıklarını gösteriyor
             period = cols[0].selectbox("Dönem", list(PERIODS) + [CUSTOM_PERIOD], key=_w("period"),
                                        on_change=_on_period_change, args=(lo, hi), disabled=disabled,
@@ -123,7 +123,7 @@ def _filter_fragment(cities: list, tree: dict, lo: dt.date, hi: dt.date, disable
             cols[4].multiselect("Alt kategori", subs, key=_w("subcategories"), on_change=_sync, args=("subcategories",),
                                 placeholder="Tüm alt kategoriler", disabled=disabled, label_visibility=hidden)
             cols[5].multiselect("Müşteri segmenti", SEGMENTS, key=_w("segments"), on_change=_sync, args=("segments",),
-                                placeholder="Tüm segmentler", disabled=disabled, label_visibility=hidden)
+                                placeholder="Tüm segmentler (yıl sonu)", disabled=disabled, label_visibility=hidden)
             cols[6].button("Temizle", icon=":material/restart_alt:", on_click=_reset, args=(lo, hi), disabled=disabled,
                            width="stretch", help="Tüm filtreleri varsayılana döndür")
             cols[7].button("", icon=":material/expand_less:", on_click=_toggle_open, key="filters_hide",

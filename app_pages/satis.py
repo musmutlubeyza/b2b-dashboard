@@ -5,13 +5,13 @@ import streamlit as st
 
 from src import charts
 from src.actions import key_account, risk_assignment, second_order
-from src.chat import render_chat
 from src.data_loader import load_churn, load_data
-from src.filters import apply_filters, comparison_label, describe, period_name, previous_period
+from src.config import SALES_TABS
+from src.filters import apply_filters, comparison_label, period_name, previous_period
 from src.formatting import fmt_number, fmt_pct, fmt_tl
-from src.metrics import city_table, customer_flow, kpis, lost_customers
+from src.metrics import city_table, customer_flow, inactive_customers, kpis
 from src.rfm import ACTIONS, rfm_summary, rfm_table
-from src.ui import action_cards, bar_cell, html_table, kpi_card, section_header
+from src.ui import action_cards, bar_cell, html_table, kpi_card, page_tabs, section_header
 
 df, _ = load_data()
 scores, model_report = load_churn()
@@ -40,7 +40,7 @@ risk = scores[scores.index.isin(customers.index[keep])]
 k, pk = kpis(cur), (kpis(prev) if prev is not None and not prev.empty else None)
 comp = comparison_label(f)
 rpc, prpc = k["revenue"] / k["customers"], (pk["revenue"] / pk["customers"] if pk else None)
-lost = lost_customers(cur, prev) if pk else None
+inactive = inactive_customers(cur, prev) if pk else None
 c = st.columns(4)
 with c[0]:
     kpi_card(0, "Alım yapan müşteri", fmt_number(k["customers"]),
@@ -48,9 +48,9 @@ with c[0]:
 with c[1]:
     kpi_card(1, "Müşteri başına ciro", fmt_tl(rpc), rpc / prpc - 1 if prpc else None, comp, fmt_tl(prpc) if prpc else "")
 with c[2]:
-    kpi_card(2, "Kaybedilen müşteri", fmt_number(len(lost)) if lost is not None else "—",
-             note=(f"Önceki dönem cirosu {fmt_tl(lost['revenue'].sum())}" if lost is not None
-                   else "Önceki dönem verisi yok"))
+    kpi_card(2, "Hareketsiz müşteri", fmt_number(len(inactive)) if inactive is not None else "—",
+             note=(f"Önceki dönemde aldı, bu dönemde almadı; önceki dönem cirosu {fmt_tl(inactive['revenue'].sum())}"
+                   if inactive is not None else "Önceki dönem verisi yok"))
 with c[3]:
     kpi_card(3, "Riskteki ciro", fmt_tl(risk["risk_revenue"].sum()),
              note="Ocak–Mart 2021 tahmini; dönemden bağımsız")
@@ -58,7 +58,7 @@ with c[3]:
 main, side = st.columns([3.4, 1], gap="large")
 flow = customer_flow(scope, cur, prev, f.start) if pk else None
 with main:
-    t_flow, t_rfm, t_risk, t_city = st.tabs(["Müşteri hareketi", "RFM segmentleri", "Kayıp riski", "İl performansı"])
+    t_flow, t_rfm, t_risk, t_city = page_tabs(SALES_TABS, "tabs_sales")
 
     with t_flow:
         if flow is None:
@@ -73,7 +73,8 @@ with main:
                 section_header("Nasıl okunur")
                 st.markdown(
                     f"- **Devam eden:** {fmt_number(flow['stay'])} müşteri iki dönemde de alım yaptı.\n"
-                    f"- **Kaybedilen:** {fmt_number(flow['lost'])} müşteri önceki dönemde alıp bu dönemde almadı.\n"
+                    f"- **Hareketsiz:** {fmt_number(flow['inactive'])} müşteri önceki dönemde alıp bu dönemde almadı. "
+                    "Bu bir kayıp değil, gözlenen bir durum: bir kısmı sonraki dönemde geri dönebilir.\n"
                     f"- **Geri dönen:** {fmt_number(flow['back'])} müşteri önceki dönemde almadı; daha önce ve bu dönemde aldı.\n"
                     f"- **Yeni:** {fmt_number(flow['new'])} müşterinin veri içindeki ilk alımı bu dönemde.")
 
@@ -82,7 +83,8 @@ with main:
         hist = apply_filters(df, f, ignore=("period", "category"))
         hist = hist[hist["InvoiceDate"] <= pd.Timestamp(f.end)]
         summary = rfm_summary(rfm_table(hist, pd.Timestamp(f.end)))
-        st.caption("Son alım (R), sıklık (F) ve tutar (M) 1–5 arası puanlandı; dönem sonuna kadarki tüm geçmiş kullanılır.")
+        st.caption("Son alım (R), sıklık (F) ve tutar (M) 1–5 arası puanlandı; segmentler R puanı ile F ve M'nin "
+                   "ortalaması (FM) üzerinden belirlendi. Dönem sonuna kadarki tüm geçmiş kullanılır.")
         top = summary["share"].max()
         html_table(["Segment", "Müşteri", "Ciro payı", "Ortanca son alım", "Ortanca fatura", "Öncelikli aksiyon"],
                    [[f"<b>{s}</b>", fmt_number(r.customers), bar_cell(r.share, top, fmt_pct(r.share)),
@@ -128,28 +130,3 @@ with side:
     if pk:
         found += [key_account(cur, prev, f, prev_f), second_order(flow["new"])]
     action_cards([a for a in found if a is not None])
-
-# --- Sohbet ---
-highlights, answers = [], {}
-if pk:
-    highlights.append(f"Alım yapan müşteri {comp} {fmt_pct(abs(k['customers'] / pk['customers'] - 1))} "
-                      f"{'arttı' if k['customers'] >= pk['customers'] else 'azaldı'}; {fmt_number(len(lost))} müşteri bu dönemde alım yapmadı.")
-    if "change" in ct and ct["change"].notna().any():
-        worst = ct["change"].idxmin()
-        chg = ct.loc[worst, "change"]
-        answers["En çok düşen il"] = f"{worst}: ciro {comp} {fmt_pct(abs(chg))} {'arttı' if chg >= 0 else 'azaldı'}."
-    answers["Yeni müşteri sayısı"] = f"Bu dönemde ilk alımını yapan {fmt_number(flow['new'])} müşteri var."
-highlights.append(f"Ocak–Mart 2021 için riskteki ciro {fmt_tl(risk['risk_revenue'].sum())}; "
-                  f"en riskli 20 müşteri {fmt_tl(risk.head(20)['risk_revenue'].sum())}.")
-answers["Kaybedilme riski en yüksek müşteriler"] = "; ".join(
-    f"{cid} ({r.city}): olasılık {fmt_pct(r.probability, 0)}, riskteki ciro {fmt_tl(r.risk_revenue)}"
-    for cid, r in risk.head(3).iterrows()) + "."
-if not summary.empty:
-    champ = summary["share"].idxmax()
-    answers["En değerli müşteri grubu hangisi?"] = (
-        f"RFM'ye göre {champ}: {fmt_number(summary.loc[champ, 'customers'])} müşteri, cironun "
-        f"{fmt_pct(summary.loc[champ, 'share'])} kadarı. Önerilen aksiyon: {ACTIONS[champ].lower()}.")
-if pk:
-    answers["Kaç müşteri kaybedildi?"] = (f"{fmt_number(len(lost))} müşteri önceki dönemde alım yapıp bu dönemde yapmadı; "
-                                         f"önceki dönem cirosu {fmt_tl(lost['revenue'].sum())}.")
-render_chat("sales", describe(f), highlights, answers)

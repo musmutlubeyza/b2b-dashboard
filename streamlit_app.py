@@ -8,7 +8,6 @@ Bu dosya ortak işleri yapar: sayfa ayarları, stil, üst gezinme, sabit filtre
 
 import streamlit as st
 
-from src.chat import start_page_facts
 from src.config import (DATA_PATH, PAGE_FORECAST, PAGE_MARKETING, PAGE_NOTES, PAGE_SALES,
                         PAGE_SUMMARY, PAGE_SUPPLY)
 from src.data_loader import load_data
@@ -35,5 +34,4 @@ pages = [
 ]
 current = st.navigation(pages, position="top")
 render_filter_bar(df, disabled=current.title == "Veri Notları")
-start_page_facts()
 current.run()

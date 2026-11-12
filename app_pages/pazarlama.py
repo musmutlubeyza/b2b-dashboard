@@ -5,13 +5,12 @@ import streamlit as st
 
 from src import charts
 from src.actions import category_signals, cross_sell_campaign, discount_review
-from src.chat import render_chat
-from src.config import PRIMARY, SEGMENTS, rgba
+from src.config import MARKETING_TABS, PRIMARY, SEGMENTS, rgba
 from src.data_loader import load_category_forecasts, load_data
-from src.filters import apply_filters, comparison_label, describe, period_name, previous_period
+from src.filters import apply_filters, comparison_label, period_name, previous_period
 from src.formatting import fmt_number, fmt_pct, fmt_tl
 from src.metrics import cross_sell, customer_discounts, penetration, segment_profiles
-from src.ui import action_cards, html_table, kpi_card, section_header
+from src.ui import action_cards, html_table, kpi_card, page_tabs, section_header, segment_period_note
 
 df, silhouette = load_data()
 f = st.session_state["filters"]
@@ -37,7 +36,7 @@ w_disc = 1 - cur["Revenue"].sum() / cur["ListValue"].sum()
 c = st.columns(4)
 with c[0]:
     core = SEGMENTS[0]
-    kpi_card(0, "Çekirdek kitabevlerinin ciro payı", fmt_pct(profiles.loc["share", core]),
+    kpi_card(0, "Çekirdek Kitabevleri'nin ciro payı", fmt_pct(profiles.loc["share", core]),
              note=f"{fmt_number(profiles.loc['customers', core])} müşteri; segment filtresinden bağımsız")
 with c[1]:
     if prev is not None and not prev.empty:
@@ -60,12 +59,13 @@ with c[3]:
 
 main, side = st.columns([3.4, 1], gap="large")
 with main:
-    t_prof, t_cross, t_disc = st.tabs(["Segment profilleri", "Kategori ve çapraz satış", "İskonto"])
+    t_prof, t_cross, t_disc = page_tabs(MARKETING_TABS, "tabs_mkt")
 
     with t_prof:
-        section_header("Segment profilleri", badge="Segment filtresi: vurgular")
+        section_header("Segment profilleri", badge=["2020 yıl sonu segmentleri", "Segment filtresi: vurgular"])
         st.caption(f"Segmentler 2020 yıl sonu davranışından k-ortalamalarla belirlendi (4 küme, silhouette "
                    f"{fmt_number(silhouette, 2)}); ölçüler seçili döneme göre hesaplanır.")
+        segment_period_note(f, df["InvoiceDate"].max().date())
         p = profiles
         share = lambda v: "%0,1’den az" if 0 < v < 0.001 else fmt_pct(v)
         rows = [("Bu dönemde alım yapan", lambda s: fmt_number(p.loc["customers", s])),
@@ -93,7 +93,7 @@ with main:
                        ["left"] + ["center"] * 4)
         with b:
             section_header("Çapraz satış fırsatları", badge="Kategori filtresinden bağımsız")
-            st.caption("Alım oranı çekirdek kitabevlerinin yarısından az olan kategoriler.")
+            st.caption("Alım oranı Çekirdek Kitabevleri segmentindekinin yarısından az olan kategoriler.")
             if targets.empty:
                 st.info("Seçili filtrelerde kurala uyan çapraz satış fırsatı yok.")
             else:
@@ -133,29 +133,5 @@ with main:
 with side:
     signals = category_signals(load_category_forecasts(f.cities, f.categories, f.segments, subcategories=f.subcategories), "Pazarlama")
     action_cards([a for a in [cross_sell_campaign(targets), *signals[:1], discount_review(disc)] if a is not None],
-                 note=None if signals else "Tahmine dayalı kampanya sinyali yok: kategori tahminleri son 8 haftadan belirgin ayrışmıyor.")
-
-highlights = [f"Çekirdek kitabevleri cironun {fmt_pct(profiles.loc['share', SEGMENTS[0]])} kadarını getiriyor.",
-              f"Ağırlıklı ortalama iskonto {fmt_pct(w_disc)}."]
-answers = {}
-if not targets.empty:
-    t = targets.iloc[0]
-    highlights.append(f"{t['segment']} segmentinde {t['category']} alım oranı {fmt_pct(t['rate'], 0)}; "
-                      f"çekirdek kitabevlerinde {fmt_pct(t['core_rate'], 0)}.")
-    answers["Hangi segmente kampanya yapmalıyız?"] = (
-        f"Kurala göre en büyük fırsat {t['segment']} segmentinde {t['category']}: {fmt_number(t['missing'])} müşteri "
-        "bu kategoriden almadı. Kârlılık verisi panelde olmadığı için kampanyanın getirisini hesaplayamam.")
-cdq = customer_discounts(cur)
-if len(cdq) >= 5:
-    cdq["group"] = pd.qcut(cdq["revenue"].rank(method="first"), 5, labels=False)
-    gq = cdq.groupby("group")[["revenue", "list_value"]].sum()
-    small, big = 1 - gq.loc[0, "revenue"] / gq.loc[0, "list_value"], 1 - gq.loc[4, "revenue"] / gq.loc[4, "list_value"]
-    answers["İskonto büyük müşterilerde daha mı yüksek?"] = (
-        f"Cirosu en büyük %20'lik grubun ağırlıklı iskontosu {fmt_pct(big)}, en küçük grubun {fmt_pct(small)}; "
-        f"fark {fmt_number(abs(big - small) * 100, 1)} puan.")
-answers["Ortalama iskonto ne kadar?"] = (f"Seçili dönemde ağırlıklı ortalama iskonto {fmt_pct(w_disc)}; "
-                                        f"müşteri bazında ortanca {fmt_pct(disc.median())}.")
-answers["Çekirdek kitabevleri ne kadar önemli?"] = (
-    f"Çekirdek kitabevleri {fmt_number(profiles.loc['customers', SEGMENTS[0]])} müşteriyle cironun "
-    f"{fmt_pct(profiles.loc['share', SEGMENTS[0]])} kadarını getiriyor.")
-render_chat("marketing", describe(f), highlights, answers)
+                 note=None if signals else "Tahmine dayalı kampanya sinyali yok: kategori tahminleri naive referansını "
+                                           "geçemedi ya da son 8 haftadan belirgin ayrışmıyor.")

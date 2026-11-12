@@ -37,3 +37,32 @@ def fmt_date(d: dt.date) -> str:
 def tr_sort_key(text: str) -> list[int]:
     """sorted(..., key=tr_sort_key) ile Türkçe alfabeye göre sıralama."""
     return [_TR_ORDER.get(ch, 1000 + ord(ch)) for ch in str(text)]
+
+
+# --- Türkçe büyük/küçük harf -------------------------------------------------
+# Python'un str.lower/upper/title fonksiyonları Türkçeyi bilmez: "İ".lower() noktası ayrı
+# bir "i̇" üretir, "iskonto".title() ise "Iskonto" olur. Bu fonksiyonlar Türkçe kurala uyar.
+_TITLE_KEEP_LOWER = {"ve", "ile", "veya", "ya", "da", "de", "ki", "mi", "mı", "mu", "mü"}
+
+
+def tr_lower(text: str) -> str:
+    return str(text).replace("İ", "i").replace("I", "ı").lower()
+
+
+def tr_upper(text: str) -> str:
+    return str(text).replace("i", "İ").replace("ı", "I").upper()
+
+
+def tr_capitalize_word(word: str) -> str:
+    """Kelimenin ilk harfini Türkçe kurala göre büyütür; geri kalanına dokunmaz (SKU, RFM korunur)."""
+    for i, ch in enumerate(word):
+        if ch.isalpha():
+            return word[:i] + tr_upper(ch) + word[i + 1:]
+    return word
+
+
+def tr_title(text: str) -> str:
+    """Başlık düzeni: her kelime büyük harfle başlar; bağlaçlar (ve, ile, veya, de/da, ki, mi) küçük kalır."""
+    words = str(text).split(" ")
+    return " ".join(w if (i > 0 and tr_lower(w) in _TITLE_KEEP_LOWER) else tr_capitalize_word(w)
+                    for i, w in enumerate(words))

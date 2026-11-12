@@ -42,7 +42,10 @@ def category_tree() -> dict:
     from src.categories import MAIN_CATEGORIES
     df, _ = load_data()
     t = df.groupby("Main_Category", observed=True)["Category_Standardized"].unique()
-    return {m: sorted(t[m].tolist()) for m in MAIN_CATEGORIES if m in t.index}
+    from src.formatting import tr_sort_key
+    mains = sorted([m for m in MAIN_CATEGORIES if m in t.index and m != "Diğer"], key=tr_sort_key)
+    mains += [m for m in ["Diğer"] if m in t.index]  # "Diğer" alfabeye katılmaz, en sonda
+    return {m: sorted(t[m].tolist(), key=tr_sort_key) for m in mains}
 
 
 def _scope(df, cities: tuple, categories: tuple, segments: tuple, subcategories: tuple = ()):
@@ -59,16 +62,21 @@ def _scope(df, cities: tuple, categories: tuple, segments: tuple, subcategories:
 
 @st.cache_data(show_spinner="Tahmin hesaplanıyor...")
 def load_forecast(cities: tuple = (), categories: tuple = (), segments: tuple = (),
-                  value: str = "Revenue", horizon: int = 8, cap: bool = True, subcategories: tuple = ()) -> dict:
+                  value: str = "Revenue", horizon: int = 8, adjust: bool = True, subcategories: tuple = ()) -> dict:
     """Dönem filtresinden bağımsız: tahmin her zaman 2020'nin tüm haftalarıyla kurulur."""
+    import pandas as pd
     from src.forecast import run, weekly_series
     df, _ = load_data()
-    return run(weekly_series(_scope(df, cities, categories, segments, subcategories), value), horizon, cap)
+    scope = _scope(df, cities, categories, segments, subcategories)
+    r = run(weekly_series(scope, value), horizon, adjust)
+    last = scope[scope["InvoiceWeek"] == pd.Timestamp("2020-12-28")]  # kısmi son hafta (28–31 Aralık)
+    r["partial_last"] = (pd.Timestamp("2020-12-28"), float(last[value].sum()), int(last["InvoiceDate"].dt.date.nunique()))
+    return r
 
 
 @st.cache_data(show_spinner="Kategori tahminleri hesaplanıyor...")
 def load_category_forecasts(cities: tuple = (), categories: tuple = (), segments: tuple = (),
-                            value: str = "Revenue", horizon: int = 8, cap: bool = True, n: int = 5,
+                            value: str = "Revenue", horizon: int = 8, adjust: bool = True, n: int = 5,
                             subcategories: tuple = ()):
     """Kapsamdaki en büyük n kategori için ayrı ayrı tahmin özeti."""
     import pandas as pd
@@ -77,13 +85,13 @@ def load_category_forecasts(cities: tuple = (), categories: tuple = (), segments
     scope = _scope(df, cities, categories, segments, subcategories)
     rows = []
     for cat in scope.groupby("Category_Standardized", observed=True)["Revenue"].sum().nlargest(n).index:
-        r = run(weekly_series(scope[scope["Category_Standardized"] == cat], value), horizon, cap)
+        r = run(weekly_series(scope[scope["Category_Standardized"] == cat], value), horizon, adjust)
         row = {"category": cat, "enough": r["enough_data"], "active_weeks": r["active_weeks"]}
         if r["enough_data"]:
             fc = r["forecast"]
             row.update(last8=r["last8_mean"], mean=fc["point"].mean(), lo=fc["lo"].mean(), hi=fc["hi"].mean(),
                        model=r["best"], mape=r["table"].loc[r["best"], "mape"], signal=r["signal"],
-                       beats_naive=r["beats_naive"])
+                       beats_naive=r["beats_naive"], unit="TL" if value == "Revenue" else "adet")
         rows.append(row)
     return pd.DataFrame(rows)
 
@@ -94,3 +102,12 @@ def load_category_audit():
     import pandas as pd
     from src.config import REPORT_PATH
     return pd.read_csv(REPORT_PATH.parent / "category_mapping.csv")
+
+
+@st.cache_data
+def load_review_records():
+    """Hesaplamalardan ayrılan, kaynak sistemde kontrol edilecek kayıtlar (data_prep.py üretir)."""
+    import pandas as pd
+    from src.config import REPORT_PATH
+    path = REPORT_PATH.parent / "review_records.csv"
+    return pd.read_csv(path, dtype={"StockCode": str}) if path.exists() else pd.DataFrame()

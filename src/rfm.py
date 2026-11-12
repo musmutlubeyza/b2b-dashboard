@@ -1,15 +1,17 @@
 """RFM: son alım (R), sıklık (F) ve tutar (M) için 1–5 arası dilim puanı.
-Segmentler R ve F puanlarından türetilir. Hesap, dönem sonuna kadarki tüm geçmişle yapılır."""
+Segmentler R puanı ile FM puanından (F ve M'nin ortalaması, yarımlar yukarı yuvarlanır) türetilir;
+böylece tutarı yüksek ama sıklığı düşen müşteriler "Kayıp" yerine "Risk Altında" görünür.
+Hesap, dönem sonuna kadarki tüm geçmişle yapılır."""
 
 import pandas as pd
 
-ORDER = ["Şampiyonlar", "Sadık", "Potansiyel sadık", "Yeni / tek seferlik", "İlgi bekleyen", "Risk altında", "Kayıp"]
+ORDER = ["Şampiyonlar", "Sadık", "Potansiyel Sadık", "Yeni / Tek Seferlik", "İlgi Bekleyen", "Risk Altında", "Kayıp"]
 ACTIONS = {"Şampiyonlar": "Öncelikli sevkiyat, yeni çıkanları önce sun",
            "Sadık": "Sipariş sıklığını koru, çeşit genişlet",
-           "Potansiyel sadık": "Düzenli sipariş için hatırlatma",
-           "Yeni / tek seferlik": "İkinci siparişi teşvik et",
-           "İlgi bekleyen": "Temsilci araması planla",
-           "Risk altında": "Geri kazanım görüşmesi",
+           "Potansiyel Sadık": "Düzenli sipariş için hatırlatma",
+           "Yeni / Tek Seferlik": "İkinci siparişi teşvik et",
+           "İlgi Bekleyen": "Temsilci araması planla",
+           "Risk Altında": "Geri kazanım görüşmesi",
            "Kayıp": "Düşük maliyetli hatırlatma"}
 
 
@@ -18,13 +20,14 @@ def _score(s: pd.Series, ascending: bool = True) -> pd.Series:
     return pd.qcut(s.rank(method="first", ascending=ascending), 5, labels=[1, 2, 3, 4, 5]).astype(int)
 
 
-def _segment(r: int, f: int) -> str:
-    if r >= 4 and f >= 4: return "Şampiyonlar"
-    if r >= 3 and f >= 4: return "Sadık"
-    if r >= 4 and f >= 2: return "Potansiyel sadık"
-    if r >= 4: return "Yeni / tek seferlik"
-    if r == 3: return "İlgi bekleyen"
-    if f >= 3: return "Risk altında"
+def _segment(r: int, fm: int) -> str:
+    """R ve FM puanından segment (FM: sıklık ve tutar puanlarının ortalaması)."""
+    if r >= 4 and fm >= 4: return "Şampiyonlar"
+    if r >= 3 and fm >= 4: return "Sadık"
+    if r >= 4 and fm >= 2: return "Potansiyel Sadık"
+    if r >= 4: return "Yeni / Tek Seferlik"
+    if r == 3: return "İlgi Bekleyen"
+    if fm >= 3: return "Risk Altında"
     return "Kayıp"
 
 
@@ -37,7 +40,8 @@ def rfm_table(df: pd.DataFrame, end: pd.Timestamp) -> pd.DataFrame:
         return t.assign(rfm="—")
     t["R"] = _score(t["recency"], ascending=False)  # yakın tarih = yüksek puan
     t["F"], t["M"] = _score(t["frequency"]), _score(t["monetary"])
-    t["rfm"] = [_segment(r, f) for r, f in zip(t["R"], t["F"])]
+    t["FM"] = ((t["F"] + t["M"]) / 2 + 0.5).astype(int)  # yarımlar yukarı: 3,5 -> 4
+    t["rfm"] = [_segment(r, fm) for r, fm in zip(t["R"], t["FM"])]
     return t
 
 

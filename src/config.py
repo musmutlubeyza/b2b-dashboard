@@ -44,7 +44,7 @@ def rgba(hex_color: str, alpha: float) -> str:
 
 
 # --- Segmentler (sıra ve renk tüm grafiklerde aynı) ---
-SEGMENTS = ["Çekirdek kitabevleri", "Toplu alıcılar", "Düzenli küçük alıcılar", "Uykudaki müşteriler"]
+SEGMENTS = ["Çekirdek Kitabevleri", "Toplu Alıcılar", "Düzenli Küçük Alıcılar", "Uykudaki Müşteriler"]
 SEGMENT_COLORS = dict(zip(SEGMENTS, [PRIMARY, ACCENT, "#B79CC8", "#D6CEDB"]))
 
 # --- Dönemler ---
@@ -58,6 +58,7 @@ PERIODS = {
 CUSTOM_PERIOD = "Özel aralık"
 DEFAULT_PERIOD = "4. Çeyrek 2020"
 PANDEMIC_BAND = (dt.date(2020, 3, 16), dt.date(2020, 6, 1))  # yaklaşık kısıtlama dönemi
+SALES_GAP_WEEKS = ("2020-07-20", "2020-07-27")  # 22 Temmuz – 2 Ağustos: hiç fatura yok (kayıt boşluğu)
 INACTIVE_DAYS = 90
 
 # --- Türkçe etiketler ---
@@ -66,3 +67,12 @@ MONTHS_TR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz",
 MONTHS_TR_SHORT = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"]
 WEEKDAYS_TR = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
 WEEKDAYS_TR_SHORT = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]  # ilk 3 harf Pazartesi/Pazar ve Cuma/Cumartesi'yi karıştırır
+
+# --- Sayfa içi sekmeler (bağlantılar sekmeyi adıyla açtığı için tek yerde tanımlı) ---
+TAB_PARAM = "sekme"
+SALES_TABS = ["Müşteri Hareketi", "RFM Segmentleri", "Kayıp Riski", "İl Performansı"]
+MARKETING_TABS = ["Segment Profilleri", "Kategori ve Çapraz Satış", "İskonto"]
+SUPPLY_TABS = ["ABC-XYZ Önceliklendirme", "İş Yükü", "En Çok Satan Başlıklar"]
+FORECAST_TABS = ["Haftalık Tahmin", "Model Karşılaştırması", "Kategori Tahminleri", "Sınırlılıklar"]
+NOTES_TABS = ["Temizleme ve Kontrol Listesi", "Düzeltmeler", "Kategori Standardizasyonu", "Varsayımlar ve Sınırlılıklar",
+              "Yöntemler ve Terimler", "Aksiyon Kuralları", "Filtre Davranışı"]
