@@ -1,0 +1,146 @@
+{
+  "ham_satir": 664154,
+  "temiz_satir": 657853,
+  "ham_ciro": 29579960.23,
+  "temiz_ciro": 29417403.32,
+  "adimlar": [
+    {
+      "adim": "Ürün adı tip düzeltmesi",
+      "duzeltilen_satir": 917,
+      "gerekce": "Excel'in sayı/tarih/saate çevirdiği başlıklar metne döndürüldü."
+    },
+    {
+      "adim": "Kategori boşluk temizliği",
+      "duzeltilen_satir": 14998,
+      "gerekce": "Sonunda boşluk olan kategori etiketleri birleştirildi."
+    },
+    {
+      "adim": "Birebir tekrar eden satırlar",
+      "silinen_satir": 6213,
+      "gerekce": "Kalem numarası olmadığından ayırt edilemiyor; çift sayımı önlemek için silindi."
+    },
+    {
+      "adim": "Eksik veya sıfır adet",
+      "silinen_satir": 11,
+      "gerekce": "Satış miktarı tanımsız; ciroya katkısı yok veya düzeltme kaydı."
+    },
+    {
+      "adim": "Sıfır veya negatif net fiyat",
+      "silinen_satir": 5,
+      "gerekce": "Ücretsiz/düzeltme kayıtları; iskonto oranını bozuyor."
+    },
+    {
+      "adim": "Liste fiyatı < 1 TL",
+      "silinen_satir": 5,
+      "gerekce": "Yer tutucu fiyatlar (ör. 0,0001 TL)."
+    },
+    {
+      "adim": "İskonto > %90",
+      "silinen_satir": 67,
+      "gerekce": "Neredeyse bedelsiz sevkiyat (tek fatura); iskonto analizlerini çarpıtıyor."
+    },
+    {
+      "adim": "City eksik değer",
+      "duzeltilen_satir": 6002,
+      "gerekce": "'Belirtilmemiş' olarak etiketlendi."
+    },
+    {
+      "adim": "İl adı standardizasyonu",
+      "duzeltilen_satir": 651851,
+      "gerekce": "Büyük harf/ASCII yazımlar resmi il adlarına çevrildi (IÇEL -> Mersin, AFYON -> Afyonkarahisar)."
+    },
+    {
+      "adim": "Kategori standardizasyonu",
+      "duzeltilen_satir": 128383,
+      "gerekce": "Etiketler sadeleştirildi, İngilizce etiketler çevrildi, eşdeğer etiketler birleştirildi; ayrıntı category_mapping.csv dosyasında."
+    },
+    {
+      "adim": "Eksik kategori sınıflandırması",
+      "duzeltilen_satir": 63,
+      "gerekce": "Onaylı ürün eşlemesi, ürün kodu ve ürün adı eşleştirmesiyle atandı."
+    }
+  ],
+  "kategori": {
+    "original_categories": 305,
+    "standardized_categories": 291,
+    "missing_before": 63,
+    "classified_missing": 63,
+    "unresolved": 0,
+    "merged_labels": 14,
+    "mapping_status_labels": {
+      "Unchanged": 239,
+      "Translated": 32,
+      "Merged": 18,
+      "Normalized": 10,
+      "Needs Review": 6,
+      "Missing": 1
+    },
+    "needs_review_records": 1796,
+    "by_method": {
+      "Existing Category": 657790,
+      "Approved Product Mapping": 63
+    },
+    "main_distribution": {
+      "Edebiyat ve Kurgu": {
+        "records": 336247,
+        "products": 17851
+      },
+      "Çocuk ve Gençlik": {
+        "records": 151747,
+        "products": 11032
+      },
+      "Aile ve Ebeveynlik": {
+        "records": 8787,
+        "products": 607
+      },
+      "Eğitim ve Sınav": {
+        "records": 25659,
+        "products": 859
+      },
+      "Kişisel Gelişim ve Psikoloji": {
+        "records": 35752,
+        "products": 1856
+      },
+      "Felsefe ve Toplum Bilimleri": {
+        "records": 21558,
+        "products": 3063
+      },
+      "Tarih ve Coğrafya": {
+        "records": 19099,
+        "products": 2290
+      },
+      "Din ve Maneviyat": {
+        "records": 14567,
+        "products": 1625
+      },
+      "Bilim ve Teknoloji": {
+        "records": 5005,
+        "products": 544
+      },
+      "İş Dünyası ve Ekonomi": {
+        "records": 3326,
+        "products": 588
+      },
+      "Sanat ve Kültür": {
+        "records": 6031,
+        "products": 940
+      },
+      "Sağlık ve Yaşam": {
+        "records": 3977,
+        "products": 555
+      },
+      "Dil ve Yabancı Diller": {
+        "records": 12583,
+        "products": 998
+      },
+      "Hobi ve Eğlence": {
+        "records": 11923,
+        "products": 705
+      },
+      "Diğer": {
+        "records": 1592,
+        "products": 62
+      }
+    }
+  }
+}

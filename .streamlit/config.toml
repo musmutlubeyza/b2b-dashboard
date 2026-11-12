@@ -1,0 +1,18 @@
+[theme]
+base = "light"
+primaryColor = "#8E1F45"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F8E7EC"
+textColor = "#2B1A22"
+linkColor = "#7A1A3A"
+borderColor = "#E2C3CD"
+greenColor = "#1A6B42"
+redColor = "#B3261E"
+font = "Plus Jakarta Sans:https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap, sans-serif"
+headingFont = "Bricolage Grotesque:https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&display=swap, sans-serif"
+headingFontWeights = [700, 600, 600, 600, 600, 600]
+baseRadius = "10px"
+chartCategoricalColors = ["#8E1F45", "#E8A33D", "#9C86C9", "#D9734C", "#5E4A8A", "#D5CCD1"]
+
+[client]
+toolbarMode = "minimal"

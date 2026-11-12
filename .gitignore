@@ -1,0 +1,7 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+# API anahtarları asla GitHub'a gitmemeli (chatbot aşamasında kullanılacak)
+.streamlit/secrets.toml
